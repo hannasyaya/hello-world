@@ -15,6 +15,14 @@ python3 analyse.py --salaire 100000          # table de sensibilité si le salai
 Options : `--salaire`, `--salaire-conjoint`, `--semaines-paternite` (défaut 5),
 `--semaines-maternite` (défaut 18, semaines déjà prises par le conjoint).
 
+Si le congé enjambe deux années civiles — les prestations sont versées jusqu'à
+**78 semaines après la naissance** — `deux_annees.py` compare où placer les
+semaines partageables :
+
+```bash
+python3 deux_annees.py --salaire-conjoint 80000 --semaines-maternite-2026 14
+```
+
 ## Ce que le modèle fait
 
 Une semaine de congé remplace une semaine de salaire par une semaine de
@@ -46,9 +54,11 @@ chaque parent prend au moins 8 semaines parentales.
 
 ## Limites connues
 
-- **Année civile unique.** Un congé à cheval sur deux années fiscales étale le
-  revenu sur deux ans et réduit l'impôt total — le modèle ne le capte pas et
-  sous-estime donc l'avantage d'un congé qui traverse le 31 décembre.
+- **`analyse.py` raisonne sur une seule année civile.** Un congé à cheval sur
+  deux années étale le revenu et réduit l'impôt total — utiliser
+  `deux_annees.py` dans ce cas. Les paramètres 2027 y sont supposés égaux à
+  ceux de 2026 ; l'indexation d'environ 2 % joue dans le même sens pour tous
+  les scénarios comparés.
 - **Seuils d'impôt fédéraux 2026 non indexés** dans les sources consultées
   (marqués `APPROX` dans `parametres_2026.py`). Effet de quelques centaines de
   dollars sur les montants absolus, quasi nul sur les écarts entre scénarios.
