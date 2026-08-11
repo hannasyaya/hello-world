@@ -180,7 +180,13 @@ def main():
     ap.add_argument("--semaines-paternite", type=int, default=5)
     ap.add_argument("--semaines-maternite", type=int, default=18,
                     help="semaines de maternite deja prises par le conjoint")
+    ap.add_argument("--semaines-70-restantes", type=int, default=None,
+                    help="semaines partageables a 70 %% encore disponibles "
+                         "(defaut 7 ; mettre 0 si elles sont deja consommees)")
     args = ap.parse_args()
+
+    if args.semaines_70_restantes is not None:
+        p.RQAP_BASE_PARENTALES_70_SEMAINES = args.semaines_70_restantes
 
     print(f"RQAP {p.ANNEE} - regime de base - Montreal")
     rapport_plafonds(args.salaire, args.semaines_paternite)
