@@ -90,45 +90,50 @@ def rapport_marginal(salaire_plein_temps, semaines_conge_deja):
     print(f"Prendre les {p.RQAP_BASE_PARENTALES_TOTAL} semaines partageables coute {fmt(total)} net sur l'annee.")
 
 
-def rapport_couple(salaire_a, salaire_b, semaines_conge_deja):
+def _parent(salaire, semaines_reservees, semaines_partagees, semaines_70_dispo):
+    """Annee d'un parent : ses semaines reservees (70 %) + ses semaines partagees.
+
+    `semaines_70_dispo` est le nombre de semaines partageables a 70 % encore
+    disponibles pour ce parent (les 7 premieres appartiennent a la famille).
+    """
+    a_70 = min(semaines_partagees, max(0, semaines_70_dispo))
+    return calcul.annee(
+        salaire,
+        semaines_reservees + semaines_partagees,
+        semaines_a_70=semaines_reservees + a_70,
+        semaines_a_55=semaines_partagees - a_70,
+    )
+
+
+def _net_couple(salaire_a, salaire_b, sem_pat, sem_mat, sem_a, sem_b):
+    """Revenu net combine du couple. A sert les semaines a 70 % en premier."""
+    ra = _parent(salaire_a, sem_pat, sem_a, p.RQAP_BASE_PARENTALES_70_SEMAINES)
+    reste_70 = p.RQAP_BASE_PARENTALES_70_SEMAINES - min(sem_a, p.RQAP_BASE_PARENTALES_70_SEMAINES)
+    rb = _parent(salaire_b, sem_mat, sem_b, reste_70)
+    return ra.revenu_net + rb.revenu_net
+
+
+def rapport_couple(salaire_a, salaire_b, sem_pat, sem_mat):
     section("3. QUI DEVRAIT PRENDRE LES SEMAINES PARTAGEABLES ?")
-    print(f"Parent A (toi) : {fmt(salaire_a)}   |   Parent B : {fmt(salaire_b)}")
+    print(f"Parent A (toi) : {fmt(salaire_a)} + {sem_pat} sem. de paternite")
+    print(f"Parent B       : {fmt(salaire_b)} + {sem_mat} sem. de maternite")
     print()
     print(f"{'Sem. partagees':>15}{'Prises par A':>15}{'Prises par B':>15}"
           f"{'Net du couple':>16}{'Ecart':>13}")
     print("-" * 78)
 
-    reference = None
-    lignes = []
+    reference = _net_couple(salaire_a, salaire_b, sem_pat, sem_mat, 0, 0)
     for total_sem in (0, 8, 16, 24, 32):
         for preneur in ("A", "B"):
             if total_sem == 0 and preneur == "B":
                 continue
             sem_a = total_sem if preneur == "A" else 0
             sem_b = total_sem if preneur == "B" else 0
-
-            ra = calcul.annee(
-                salaire_a,
-                semaines_conge_deja + sem_a,
-                semaines_a_70=semaines_conge_deja + min(sem_a, p.RQAP_BASE_PARENTALES_70_SEMAINES),
-                semaines_a_55=max(0, sem_a - p.RQAP_BASE_PARENTALES_70_SEMAINES),
-            )
-            rb = calcul.annee(
-                salaire_b,
-                sem_b,
-                semaines_a_70=min(sem_b, p.RQAP_BASE_PARENTALES_70_SEMAINES),
-                semaines_a_55=max(0, sem_b - p.RQAP_BASE_PARENTALES_70_SEMAINES),
-            )
-            net = ra.revenu_net + rb.revenu_net
-            if reference is None:
-                reference = net
-            lignes.append((total_sem, sem_a, sem_b, net, net - reference))
-
-    for total_sem, sem_a, sem_b, net, ecart in lignes:
-        print(f"{total_sem:>15}{sem_a:>15}{sem_b:>15}{fmt(net)}{fmt(ecart)}")
+            net = _net_couple(salaire_a, salaire_b, sem_pat, sem_mat, sem_a, sem_b)
+            print(f"{total_sem:>15}{sem_a:>15}{sem_b:>15}{fmt(net)}{fmt(net - reference)}")
 
 
-def rapport_sensibilite(salaire_a, semaines_conge_deja):
+def rapport_sensibilite(salaire_a, sem_pat, sem_mat):
     section("3. SENSIBILITE AU SALAIRE DU CONJOINT (16 semaines partagees)")
     print("Ecart de revenu net du couple selon qui prend les 16 semaines.")
     print("Un ecart positif = il vaut mieux que ce soit le parent B qui les prenne.")
@@ -137,22 +142,12 @@ def rapport_sensibilite(salaire_a, semaines_conge_deja):
     print("-" * 78)
 
     for salaire_b in (45_000, 60_000, 75_000, 90_000, 100_000, 120_000):
-        ra_conge = calcul.annee(
-            salaire_a, semaines_conge_deja + 16,
-            semaines_a_70=semaines_conge_deja + 7, semaines_a_55=9,
-        )
-        ra_plein = calcul.annee(
-            salaire_a, semaines_conge_deja, semaines_a_70=semaines_conge_deja,
-        )
-        rb_conge = calcul.annee(salaire_b, 16, semaines_a_70=7, semaines_a_55=9)
-        rb_plein = calcul.annee(salaire_b, 0)
-
-        net_si_a = ra_conge.revenu_net + rb_plein.revenu_net
-        net_si_b = ra_plein.revenu_net + rb_conge.revenu_net
+        net_si_a = _net_couple(salaire_a, salaire_b, sem_pat, sem_mat, 16, 0)
+        net_si_b = _net_couple(salaire_a, salaire_b, sem_pat, sem_mat, 0, 16)
         print(f"{fmt(salaire_b):>18}{fmt(net_si_a)}{fmt(net_si_b)}{fmt(net_si_b - net_si_a)}")
 
 
-def rapport_bonus(salaire_a, salaire_b, semaines_conge_deja):
+def rapport_bonus(salaire_a, salaire_b, sem_pat, sem_mat):
     """Effet de seuil : 8 semaines chacun debloquent 4 semaines de plus."""
     section("4. LE SEUIL DES 8 SEMAINES (bonus de partage)")
     seuil = p.RQAP_BASE_BONUS_SEUIL_PAR_PARENT
@@ -160,19 +155,6 @@ def rapport_bonus(salaire_a, salaire_b, semaines_conge_deja):
     print(f"obtient {p.RQAP_BASE_BONUS_SEMAINES} semaines partageables de plus a "
           f"{p.RQAP_BASE_BONUS_TAUX:.0%}.")
     print()
-
-    def couple(sem_a, sem_b):
-        ra = calcul.annee(
-            salaire_a, semaines_conge_deja + sem_a,
-            semaines_a_70=semaines_conge_deja + min(sem_a, p.RQAP_BASE_PARENTALES_70_SEMAINES),
-            semaines_a_55=max(0, sem_a - p.RQAP_BASE_PARENTALES_70_SEMAINES),
-        )
-        rb = calcul.annee(
-            salaire_b, sem_b,
-            semaines_a_70=max(0, min(sem_b, p.RQAP_BASE_PARENTALES_70_SEMAINES - sem_a)),
-            semaines_a_55=sem_b - max(0, min(sem_b, p.RQAP_BASE_PARENTALES_70_SEMAINES - sem_a)),
-        )
-        return ra.revenu_net + rb.revenu_net, sem_a + sem_b
 
     print(f"{'Scenario':<44}{'Sem. totales':>14}{'Net du couple':>16}")
     print("-" * 78)
@@ -183,8 +165,8 @@ def rapport_bonus(salaire_a, salaire_b, semaines_conge_deja):
         ("A prend 16, B prend 20  (bonus utilise)", 16, 20),
     ]
     for label, sem_a, sem_b in scenarios:
-        net, total = couple(sem_a, sem_b)
-        print(f"{label:<44}{total:>14}{fmt(net)}")
+        net = _net_couple(salaire_a, salaire_b, sem_pat, sem_mat, sem_a, sem_b)
+        print(f"{label:<44}{sem_a + sem_b:>14}{fmt(net)}")
     print()
     print("Le bonus n'est pas de l'argent gratuit : ce sont 4 semaines de conge")
     print("payees a 55 % de plus, donc du temps en famille achete au meme prix")
@@ -196,16 +178,21 @@ def main():
     ap.add_argument("--salaire", type=float, default=100_000)
     ap.add_argument("--salaire-conjoint", type=float, default=None)
     ap.add_argument("--semaines-paternite", type=int, default=5)
+    ap.add_argument("--semaines-maternite", type=int, default=18,
+                    help="semaines de maternite deja prises par le conjoint")
     args = ap.parse_args()
 
     print(f"RQAP {p.ANNEE} - regime de base - Montreal")
     rapport_plafonds(args.salaire, args.semaines_paternite)
     rapport_marginal(args.salaire, args.semaines_paternite)
     if args.salaire_conjoint:
-        rapport_couple(args.salaire, args.salaire_conjoint, args.semaines_paternite)
-        rapport_bonus(args.salaire, args.salaire_conjoint, args.semaines_paternite)
+        rapport_couple(args.salaire, args.salaire_conjoint,
+                       args.semaines_paternite, args.semaines_maternite)
+        rapport_bonus(args.salaire, args.salaire_conjoint,
+                      args.semaines_paternite, args.semaines_maternite)
     else:
-        rapport_sensibilite(args.salaire, args.semaines_paternite)
+        rapport_sensibilite(args.salaire, args.semaines_paternite,
+                            args.semaines_maternite)
 
 
 if __name__ == "__main__":

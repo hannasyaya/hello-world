@@ -12,7 +12,8 @@ python3 analyse.py --salaire 100000 --salaire-conjoint 75000
 python3 analyse.py --salaire 100000          # table de sensibilité si le salaire du conjoint est inconnu
 ```
 
-Options : `--salaire`, `--salaire-conjoint`, `--semaines-paternite` (défaut 5).
+Options : `--salaire`, `--salaire-conjoint`, `--semaines-paternite` (défaut 5),
+`--semaines-maternite` (défaut 18, semaines déjà prises par le conjoint).
 
 ## Ce que le modèle fait
 
