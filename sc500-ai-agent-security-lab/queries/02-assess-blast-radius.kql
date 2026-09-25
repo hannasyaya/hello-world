@@ -1,0 +1,79 @@
+// =====================================================================
+// SC-500 Lab - Exercise 2: Assess the blast radius of agent identities
+// Run in: Defender portal > Advanced hunting
+// Tables: ExposureGraphNodes, ExposureGraphEdges (Microsoft Security Exposure Management)
+// Set AgentIdentityName to an agent identity, blueprint or managed identity from Exercise 1.
+// =====================================================================
+
+// 2.0 - Which edge types exist in your graph? (Use these labels in the queries below.)
+ExposureGraphEdges
+| summarize Edges = count() by EdgeLabel, SourceNodeLabel, TargetNodeLabel
+| order by Edges desc
+
+// 2.1 - Direct permissions of one agent identity (first hop)
+let AgentIdentityName = "mi-agent-devops";
+ExposureGraphEdges
+| where SourceNodeName =~ AgentIdentityName
+| project SourceNodeName, EdgeLabel, TargetNodeName, TargetNodeLabel,
+          Roles = EdgeProperties.rawData.permissions.roles
+| order by TargetNodeLabel asc
+
+// 2.2 - Blast radius: everything reachable in up to 4 hops, and whether it is critical.
+//       criticalityLevel 0 is the most critical and 3 the least; a missing value means not critical.
+let AgentIdentityName = "mi-agent-devops";
+let Nodes = ExposureGraphNodes
+    | extend Criticality = toint(NodeProperties.rawData.criticalityLevel.criticalityLevel);
+ExposureGraphEdges
+| make-graph SourceNodeId --> TargetNodeId with Nodes on NodeId
+| graph-match (agent)-[e*1..4]->(target)
+    where agent.NodeName =~ AgentIdentityName
+    project TargetName = target.NodeName, TargetLabel = target.NodeLabel,
+            Criticality = target.Criticality, Hops = array_length(e.EdgeLabel), Via = e.EdgeLabel
+| summarize MinHops = min(Hops), SamplePath = take_any(Via)
+    by TargetName, TargetLabel, Criticality
+| extend IsCritical = isnotnull(Criticality) and Criticality < 4
+| order by IsCritical desc, MinHops asc
+
+// 2.3 - Blast radius summary for every identity that an agent uses.
+//       Change the NodeLabel filter to the labels you found in query 1.7.
+let AgentIdentityLabels = dynamic(["serviceprincipal", "managedidentity"]);
+let Nodes = ExposureGraphNodes
+    | extend Criticality = toint(NodeProperties.rawData.criticalityLevel.criticalityLevel);
+ExposureGraphEdges
+| make-graph SourceNodeId --> TargetNodeId with Nodes on NodeId
+| graph-match (agent)-[e*1..3]->(target)
+    where agent.NodeLabel in~ (AgentIdentityLabels)
+    project Identity = agent.NodeName, Target = target.NodeId, Criticality = target.Criticality
+| summarize Reachable = dcount(Target),
+            CriticalReachable = dcountif(Target, isnotnull(Criticality) and Criticality < 4)
+    by Identity
+| order by CriticalReachable desc, Reachable desc
+
+// 2.4 - Permissions that are too broad for an agent: Owner, Contributor, User Access Administrator
+//       or data-plane roles on a whole subscription or resource group.
+ExposureGraphEdges
+| where EdgeLabel =~ "has permissions to"
+| where SourceNodeLabel in~ ("serviceprincipal", "managedidentity")
+| mv-expand Role = EdgeProperties.rawData.permissions.roles
+| extend RoleName = tostring(Role.name)
+| where RoleName in~ ("Owner", "Contributor", "User Access Administrator", "Key Vault Administrator",
+                      "Key Vault Secrets User", "Storage Blob Data Owner", "Storage Blob Data Contributor")
+| project SourceNodeName, RoleName, TargetNodeName, TargetNodeLabel
+
+// 2.5 - Blueprint check: how many agent identities trust the same credential?
+//       Agent identities that come from one blueprint share its credential, so if the
+//       blueprint is compromised, all of them are compromised.
+//       In Entra, open Agent ID > Agent identity blueprints to check which identities come from it.
+ExposureGraphEdges
+| where EdgeLabel =~ "can authenticate as"
+| summarize ImpersonatedIdentities = make_set(TargetNodeName), Count = dcount(TargetNodeId)
+    by Credential = SourceNodeName, CredentialType = SourceNodeLabel
+| where Count > 1
+| order by Count desc
+
+// 2.6 - What the agent actually did: sign-ins by service principals and agent identities (last 7 days)
+AADSpnSignInEventsBeta
+| where Timestamp > ago(7d)
+| summarize SignIns = count(), Resources = make_set(ResourceDisplayName), IPs = make_set(IPAddress)
+    by ServicePrincipalName, ServicePrincipalId
+| order by SignIns desc
