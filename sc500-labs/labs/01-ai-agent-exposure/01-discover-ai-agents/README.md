@@ -67,7 +67,7 @@ The CISO at Contoso asks you: *"How many AI agents do we have, who owns them, an
 ## Simulation mode (no licenses needed)
 
 ```bash
-cd sc500-ai-agent-security-lab/simulation
+cd labs/01-ai-agent-exposure/simulation
 python3 agent_exposure.py inventory
 ```
 

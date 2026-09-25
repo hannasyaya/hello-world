@@ -88,7 +88,7 @@ In query 2.2, set `AgentIdentityName` to each agent identity, run it, and fill i
 ## Simulation mode
 
 ```bash
-cd sc500-ai-agent-security-lab/simulation
+cd labs/01-ai-agent-exposure/simulation
 python3 agent_exposure.py blast-radius agent-devops
 python3 agent_exposure.py blast-radius agent-invoice
 python3 agent_exposure.py blast-radius agent-helpdesk
