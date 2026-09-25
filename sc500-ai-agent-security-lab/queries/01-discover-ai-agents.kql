@@ -1,0 +1,68 @@
+// =====================================================================
+// SC-500 Lab - Exercise 1: Discover AI agents in Microsoft Defender XDR
+// Run in: Defender portal > Investigation & response > Hunting > Advanced hunting
+//
+// The AIAgentsInfo table is in preview, so its schema can change.
+// Run query 1.0 first and change the column names in the later queries
+// if they differ in your tenant.
+// =====================================================================
+
+// 1.0 - Check the schema of the AI agent inventory table
+AIAgentsInfo
+| getschema
+| project ColumnName, ColumnType
+
+// 1.1 - Current state of every agent (the table stores snapshots over time)
+AIAgentsInfo
+| summarize arg_max(Timestamp, *) by AIAgentId
+| project AIAgentName, AIAgentId, AgentStatus, CreatorAccountUpn, OwnerAccountUpns,
+          UserAuthenticationType, AgentCreationTime, LastPublishedTime
+| order by AIAgentName asc
+
+// 1.2 - Count of agents by status and authentication type
+AIAgentsInfo
+| summarize arg_max(Timestamp, *) by AIAgentId
+| summarize Agents = dcount(AIAgentId) by AgentStatus, UserAuthenticationType
+| order by Agents desc
+
+// 1.3 - Published agents that anyone can talk to without signing in
+AIAgentsInfo
+| summarize arg_max(Timestamp, *) by AIAgentId
+| where AgentStatus =~ "Published"
+| where UserAuthenticationType in~ ("None", "NoAuthentication")
+| project AIAgentName, AIAgentId, CreatorAccountUpn, OwnerAccountUpns, LastPublishedTime
+
+// 1.4 - Orphaned agents: none of the owners is an enabled account
+let EnabledAccounts =
+    IdentityInfo
+    | summarize arg_max(Timestamp, IsAccountEnabled) by AccountUpn
+    | where IsAccountEnabled == true
+    | project AccountUpn = tolower(AccountUpn);
+AIAgentsInfo
+| summarize arg_max(Timestamp, *) by AIAgentId
+| mv-expand Owner = todynamic(OwnerAccountUpns) to typeof(string)
+| extend Owner = tolower(Owner)
+| join kind=leftouter (EnabledAccounts | extend OwnerEnabled = true) on $left.Owner == $right.AccountUpn
+| summarize Owners = make_set(Owner), EnabledOwners = countif(OwnerEnabled == true) by AIAgentId, AIAgentName
+| where EnabledOwners == 0
+
+// 1.5 - Knowledge sources and tools of each agent (the details are stored as JSON)
+AIAgentsInfo
+| summarize arg_max(Timestamp, *) by AIAgentId
+| project AIAgentName, KnowledgeDetails, AgentToolsDetails
+| mv-expand Knowledge = todynamic(KnowledgeDetails)
+| project AIAgentName, Knowledge, AgentToolsDetails
+
+// 1.6 - Agents created or changed in the last 7 days (to catch new agents early)
+AIAgentsInfo
+| where Timestamp > ago(7d)
+| summarize FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            Versions = dcount(ReportId) by AIAgentId, AIAgentName, CreatorAccountUpn
+| order by FirstSeen desc
+
+// 1.7 - Agent identities (Microsoft Entra Agent ID) in the exposure graph.
+//       Run the discovery query first, then filter on the labels it returns.
+ExposureGraphNodes
+| summarize Nodes = count() by NodeLabel
+| where NodeLabel has_any ("agent", "blueprint", "serviceprincipal", "managedidentity")
+| order by Nodes desc

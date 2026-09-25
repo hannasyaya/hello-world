@@ -1,0 +1,64 @@
+// =====================================================================
+// SC-500 Lab - Exercise 3: Analyze attack paths through AI agent identities
+// Run in: Defender portal > Advanced hunting
+// =====================================================================
+
+// 3.1 - Paths from an agent identity to a critical asset (the same logic the
+//       Attack paths page uses, limited to paths that start at agent identities)
+let AgentIdentityLabels = dynamic(["serviceprincipal", "managedidentity"]);
+let Nodes = ExposureGraphNodes
+    | extend Criticality = toint(NodeProperties.rawData.criticalityLevel.criticalityLevel);
+ExposureGraphEdges
+| make-graph SourceNodeId --> TargetNodeId with Nodes on NodeId
+| graph-match (agent)-[e*1..5]->(crown)
+    where agent.NodeLabel in~ (AgentIdentityLabels)
+      and isnotnull(crown.Criticality) and crown.Criticality < 4
+    project AgentIdentity = agent.NodeName,
+            CriticalAsset = crown.NodeName, AssetType = crown.NodeLabel,
+            Criticality = crown.Criticality,
+            Hops = array_length(e.EdgeLabel),
+            Edges = e.EdgeLabel,
+            Through = e.TargetNodeName
+| order by Criticality asc, Hops asc
+
+// 3.2 - Multi-stage path: agent identity -> Key Vault -> secret -> another identity -> critical asset.
+//       This finds the "credential stored in a vault the agent can read" pattern from the lab scenario.
+let Nodes = ExposureGraphNodes
+    | extend Criticality = toint(NodeProperties.rawData.criticalityLevel.criticalityLevel);
+ExposureGraphEdges
+| make-graph SourceNodeId --> TargetNodeId with Nodes on NodeId
+| graph-match (agent)-[perm]->(vault)-[c1*1..2]->(cred)-[auth]->(pivot)-[e*1..3]->(crown)
+    where agent.NodeLabel in~ ("serviceprincipal", "managedidentity")
+      and vault.NodeLabel =~ "microsoft.keyvault/vaults"
+      and auth.EdgeLabel =~ "can authenticate as"
+      and isnotnull(crown.Criticality) and crown.Criticality < 4
+    project AgentIdentity = agent.NodeName, Vault = vault.NodeName, Credential = cred.NodeName,
+            PivotIdentity = pivot.NodeName, CriticalAsset = crown.NodeName
+| distinct *
+
+// 3.3 - Choke points: nodes that appear on the most agent -> critical asset paths.
+//       Fixing one choke point closes many paths.
+let Nodes = ExposureGraphNodes
+    | extend Criticality = toint(NodeProperties.rawData.criticalityLevel.criticalityLevel);
+ExposureGraphEdges
+| make-graph SourceNodeId --> TargetNodeId with Nodes on NodeId
+| graph-match (agent)-[e*1..5]->(crown)
+    where agent.NodeLabel in~ ("serviceprincipal", "managedidentity")
+      and isnotnull(crown.Criticality) and crown.Criticality < 4
+    project PathId = hash(strcat(agent.NodeId, tostring(e.TargetNodeId))), Hop = e.SourceNodeName
+| mv-expand Hop to typeof(string)
+| summarize PathsThroughNode = dcount(PathId) by Hop
+| top 10 by PathsThroughNode desc
+
+// 3.4 - Is the path in use right now? Link the paths to recent alerts about the same identity.
+let AgentIdentities =
+    ExposureGraphNodes
+    | where NodeLabel in~ ("serviceprincipal", "managedidentity")
+    | project NodeName;
+AlertEvidence
+| where Timestamp > ago(30d)
+| where EntityType in~ ("CloudApplication", "Account", "OAuthApplication")
+| where AccountName in (AgentIdentities) or Application in (AgentIdentities)
+| join kind=inner AlertInfo on AlertId
+| project Timestamp, Title, Severity, Category, EntityType, AccountName, Application
+| order by Timestamp desc

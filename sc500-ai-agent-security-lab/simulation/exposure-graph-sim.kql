@@ -1,0 +1,151 @@
+// =====================================================================
+// SC-500 Lab - Simulation mode (no licenses needed)
+// Contoso's AI agents and exposure graph, rebuilt as KQL datatables from
+// contoso-agents.json. It runs anywhere KQL runs: Defender advanced hunting,
+// a Log Analytics workspace, or a free Azure Data Explorer cluster
+// (https://dataexplorer.azure.com/freecluster).
+//
+// HOW TO USE: highlight the whole LET BLOCK plus ONE query (S1-S6), then select Run.
+// =====================================================================
+
+// ------------------------- LET BLOCK (start) -------------------------
+let SimAgents = datatable(AIAgentId:string, AIAgentName:string, Platform:string, AgentStatus:string,
+                          UserAuthenticationType:string, OwnerAccountUpns:string, AgentIdentity:string,
+                          KnowledgeSources:string, LastActivity:datetime) [
+    "agent-hr-benefits", "HR Benefits Assistant", "Copilot Studio", "Published", "None", "[\"alex.wilber@contoso.com\"]", "", "[\"kn-hr-sharepoint\"]", datetime(2026-09-23),
+    "agent-invoice", "Invoice Processing Agent", "Azure AI Foundry", "Published", "Entra ID (autonomous, app-only)", "[\"megan.bowen@contoso.com\"]", "ai-invoice-01", "[\"kn-finance-sharepoint\"]", datetime(2026-09-24),
+    "agent-devops", "DevOps Copilot", "Azure AI Foundry", "Published", "Entra ID (on-behalf-of + managed identity for tools)", "[\"lee.gu@contoso.com\"]", "mi-agent-devops", "[\"kn-runbooks-repo\"]", datetime(2026-09-24),
+    "agent-helpdesk", "IT Helpdesk Agent", "Copilot Studio", "Published", "Entra ID (authenticated users)", "[\"isaiah.langer@contoso.com\"]", "ai-helpdesk-01", "[\"kn-it-kb\"]", datetime(2026-09-22),
+    "agent-marketing", "Marketing Content Agent", "Copilot Studio", "Published", "Entra ID (authenticated users)", "[\"former.employee@contoso.com\"]", "", "[\"kn-public-website\"]", datetime(2026-03-02)
+];
+let DisabledUsers = datatable(AccountUpn:string) ["former.employee@contoso.com"];
+let SimNodes = datatable(NodeId:string, NodeName:string, NodeLabel:string, IsCritical:bool) [
+    "ep-internet", "Anonymous internet user", "entryPoint", false,
+    "ep-email", "External sender (indirect prompt injection via invoice email)", "entryPoint", false,
+    "ep-dev-workstation", "Compromised developer workstation (lee.gu)", "entryPoint", false,
+    "ep-teams-user", "Any authenticated employee (Teams)", "entryPoint", false,
+    "agent-hr-benefits", "HR Benefits Assistant", "aiAgent", false,
+    "agent-invoice", "Invoice Processing Agent", "aiAgent", false,
+    "agent-devops", "DevOps Copilot", "aiAgent", false,
+    "agent-helpdesk", "IT Helpdesk Agent", "aiAgent", false,
+    "agent-marketing", "Marketing Content Agent", "aiAgent", false,
+    "bp-finance", "Finance Agents Blueprint", "agentIdentityBlueprint", false,
+    "bp-itops", "IT Operations Agents Blueprint", "agentIdentityBlueprint", false,
+    "ai-invoice-01", "ai-invoice-01", "agentIdentity", false,
+    "ai-invoice-02", "ai-invoice-02", "agentIdentity", false,
+    "ai-expense-01", "ai-expense-01", "agentIdentity", false,
+    "ai-helpdesk-01", "ai-helpdesk-01", "agentIdentity", false,
+    "mi-agent-devops", "mi-agent-devops", "managedIdentity", false,
+    "conn-maker-alex", "SharePoint connection (alex.wilber, maker credentials)", "connection", false,
+    "kn-hr-sharepoint", "SharePoint: HR-Confidential", "knowledgeSource", true,
+    "kn-finance-sharepoint", "SharePoint: Finance", "knowledgeSource", false,
+    "kn-runbooks-repo", "GitHub: platform-runbooks", "knowledgeSource", false,
+    "kn-it-kb", "SharePoint: IT Knowledge Base", "knowledgeSource", false,
+    "kn-public-website", "Public website contoso.com", "knowledgeSource", false,
+    "all-mailboxes", "All Exchange Online mailboxes (incl. CFO)", "dataStore", true,
+    "all-sites", "All SharePoint Online sites", "dataStore", true,
+    "rg-production", "Resource group rg-production", "azureResource", false,
+    "vm-sql-prod", "VM vm-sql-prod (payroll database)", "azureResource", true,
+    "kv-contoso-ops", "Key Vault kv-contoso-ops", "azureResource", true,
+    "secret-bp-finance", "Secret: finance-blueprint-client-secret", "credential", false,
+    "role-helpdesk-admin", "Entra role: Helpdesk Administrator", "directoryRole", false,
+    "user-dana", "dana.finance@contoso.com (non-admin user)", "user", false,
+    "st-payroll", "Storage account stpayrollcontoso", "azureResource", true
+];
+let SimEdges = datatable(SourceNodeId:string, TargetNodeId:string, EdgeLabel:string, Permission:string) [
+    "ep-internet", "agent-hr-benefits", "canChatWith", "",
+    "ep-email", "agent-invoice", "canInjectPromptInto", "",
+    "ep-dev-workstation", "agent-devops", "canInvoke", "",
+    "ep-teams-user", "agent-helpdesk", "canChatWith", "",
+    "ep-teams-user", "agent-marketing", "canChatWith", "",
+    "agent-hr-benefits", "conn-maker-alex", "usesConnection", "",
+    "conn-maker-alex", "kn-hr-sharepoint", "canRead", "",
+    "agent-hr-benefits", "kn-hr-sharepoint", "usesKnowledge", "",
+    "agent-invoice", "ai-invoice-01", "runsAs", "",
+    "agent-invoice", "kn-finance-sharepoint", "usesKnowledge", "",
+    "bp-finance", "ai-invoice-01", "canActAs", "",
+    "bp-finance", "ai-invoice-02", "canActAs", "",
+    "bp-finance", "ai-expense-01", "canActAs", "",
+    "ai-invoice-01", "all-mailboxes", "hasPermission", "Mail.Read (application, inherited from blueprint)",
+    "ai-invoice-01", "all-sites", "hasPermission", "Sites.Read.All (application, inherited from blueprint)",
+    "ai-invoice-02", "all-mailboxes", "hasPermission", "Mail.Read (application, inherited from blueprint)",
+    "ai-expense-01", "all-sites", "hasPermission", "Sites.Read.All (application, inherited from blueprint)",
+    "agent-devops", "mi-agent-devops", "runsAs", "",
+    "agent-devops", "kn-runbooks-repo", "usesKnowledge", "",
+    "mi-agent-devops", "rg-production", "hasRoleOn", "Contributor",
+    "rg-production", "vm-sql-prod", "contains", "",
+    "mi-agent-devops", "kv-contoso-ops", "hasRoleOn", "Key Vault Secrets User",
+    "kv-contoso-ops", "secret-bp-finance", "contains", "",
+    "secret-bp-finance", "bp-finance", "authenticatesAs", "",
+    "agent-helpdesk", "ai-helpdesk-01", "runsAs", "",
+    "agent-helpdesk", "kn-it-kb", "usesKnowledge", "",
+    "bp-itops", "ai-helpdesk-01", "canActAs", "",
+    "ai-helpdesk-01", "role-helpdesk-admin", "memberOf", "",
+    "role-helpdesk-admin", "user-dana", "canResetPasswordOf", "",
+    "user-dana", "st-payroll", "hasRoleOn", "Storage Blob Data Reader",
+    "agent-marketing", "kn-public-website", "usesKnowledge", ""
+];
+let EntryEdges = dynamic(["canChatWith", "canInvoke", "canInjectPromptInto"]);
+let PrivilegeEdges = SimEdges | where EdgeLabel !in (EntryEdges);
+// -------------------------- LET BLOCK (end) --------------------------
+
+// S1 - Exercise 1: agent inventory with posture findings
+SimAgents
+| extend Owners = todynamic(OwnerAccountUpns)
+| mv-apply o = Owners to typeof(string) on (
+    summarize OwnerCount = count(), DisabledOwners = countif(o in (DisabledUsers)))
+| extend Findings = pack_array(
+        iff(UserAuthenticationType =~ "None", "No user authentication", ""),
+        iff(OwnerCount == DisabledOwners, "Orphaned (all owners disabled)", ""),
+        iff(isempty(AgentIdentity), "No dedicated Entra agent identity", ""),
+        iff(LastActivity < datetime(2026-06-01), "Inactive > 90 days", ""))
+| mv-apply f = Findings to typeof(string) on (where isnotempty(f) | summarize Findings = make_list(f))
+| project AIAgentName, Platform, AgentStatus, UserAuthenticationType, AgentIdentity, Findings
+
+// S2 - Exercise 1: agents whose knowledge sources hold critical data
+SimAgents
+| mv-expand Knowledge = todynamic(KnowledgeSources) to typeof(string)
+| join kind=inner (SimNodes) on $left.Knowledge == $right.NodeId
+| project AIAgentName, KnowledgeSource = NodeName, IsCritical
+| order by IsCritical desc
+
+// S3 - Exercise 2: direct (first-hop) permissions of each agent identity
+SimAgents
+| where isnotempty(AgentIdentity)
+| join kind=inner (PrivilegeEdges) on $left.AgentIdentity == $right.SourceNodeId
+| join kind=inner (SimNodes) on $left.TargetNodeId == $right.NodeId
+| project AIAgentName, AgentIdentity, EdgeLabel, Permission, Target = NodeName, IsCritical
+
+// S4 - Exercise 2: blast radius of one agent (up to 6 hops over privilege edges)
+let Agent = "agent-devops";
+PrivilegeEdges
+| make-graph SourceNodeId --> TargetNodeId with SimNodes on NodeId
+| graph-match (a)-[e*1..6]->(t)
+    where a.NodeId == Agent
+    project Target = t.NodeName, TargetLabel = t.NodeLabel, IsCritical = t.IsCritical,
+            Hops = array_length(e.EdgeLabel), Via = e.EdgeLabel
+| summarize Hops = min(Hops), Via = take_any(Via) by Target, TargetLabel, IsCritical
+| order by Hops asc
+
+// S5 - Exercise 2: blueprint blast radius (what one leaked blueprint credential unlocks)
+PrivilegeEdges
+| make-graph SourceNodeId --> TargetNodeId with SimNodes on NodeId
+| graph-match (bp)-[e*1..3]->(t)
+    where bp.NodeLabel == "agentIdentityBlueprint"
+    project Blueprint = bp.NodeName, Target = t.NodeName, TargetLabel = t.NodeLabel, IsCritical = t.IsCritical
+| summarize AgentIdentities = make_set_if(Target, TargetLabel == "agentIdentity"),
+            CriticalAssets = make_set_if(Target, IsCritical)
+    by Blueprint
+
+// S6 - Exercise 3: attack paths from entry points, through an agent, to critical assets
+SimEdges
+| make-graph SourceNodeId --> TargetNodeId with SimNodes on NodeId
+| graph-match (ep)-[entry]->(agent)-[e*1..6]->(crown)
+    where ep.NodeLabel == "entryPoint" and agent.NodeLabel == "aiAgent"
+      and entry.EdgeLabel in (EntryEdges)
+      and all(e, EdgeLabel !in (EntryEdges))
+      and crown.IsCritical
+    project EntryPoint = ep.NodeName, Agent = agent.NodeName, CriticalAsset = crown.NodeName,
+            Hops = array_length(e.EdgeLabel) + 1, Via = e.EdgeLabel,
+            Through = inner_nodes(e).NodeName
+| order by Hops asc
