@@ -34,7 +34,7 @@ Every exercise has portal steps, advanced hunting KQL, and a simulation equivale
 ## Repository layout
 
 ```
-sc500-ai-agent-security-lab/
+labs/01-ai-agent-exposure/
 ├── 00-setup/                  Tenant prerequisites, deploy and clean-up scripts (Azure CLI)
 ├── 01-discover-ai-agents/     Exercise 1: AI agent inventory
 ├── 02-assess-blast-radius/    Exercise 2: permissions, knowledge, blueprints
@@ -51,7 +51,7 @@ sc500-ai-agent-security-lab/
 ## Quick start (simulation)
 
 ```bash
-cd sc500-ai-agent-security-lab/simulation
+cd labs/01-ai-agent-exposure/simulation
 python3 agent_exposure.py inventory
 python3 agent_exposure.py blast-radius agent-devops
 python3 agent_exposure.py attack-paths

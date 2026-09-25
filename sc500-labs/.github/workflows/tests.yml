@@ -1,0 +1,22 @@
+name: Lab tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  simulation-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Run each lab's simulation tests
+        run: |
+          shopt -s nullglob
+          for t in labs/*/simulation/tests; do
+            echo "::group::$t"
+            python -m unittest discover -s "$t" -v
+            echo "::endgroup::"
+          done

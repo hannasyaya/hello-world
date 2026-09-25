@@ -75,7 +75,7 @@ Follow the longest Contoso path **hop by hop**. For each hop, write down the **m
 ## Simulation mode
 
 ```bash
-cd sc500-ai-agent-security-lab/simulation
+cd labs/01-ai-agent-exposure/simulation
 python3 agent_exposure.py attack-paths
 python3 agent_exposure.py --json attack-paths > paths.json   # for your report
 ```

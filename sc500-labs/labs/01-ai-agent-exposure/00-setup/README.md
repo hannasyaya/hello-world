@@ -25,7 +25,7 @@
 ```bash
 az login
 az account set --subscription "<lab-subscription-id>"
-cd sc500-ai-agent-security-lab/00-setup
+cd labs/01-ai-agent-exposure/00-setup
 chmod +x deploy-lab-resources.sh cleanup.sh
 ./deploy-lab-resources.sh --location eastus --enable-defender-cspm
 ```
