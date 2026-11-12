@@ -2,7 +2,7 @@
 Frameworks: NIST CSF 2.0 (Feb 2024) · ISO/IEC 27001:2022 Annex A · NIST AI RMF 1.0 (AI 100-1, Jan 2023) · ISO/IEC 42001:2023 Annex A
 
 Notes on this mapping
-- Input: `evidence.md` (E-01 to E-70 and its Gaps section). No risk register existed when this was written, so rows cite evidence IDs only. Cross-reference to R-IDs when the register is final.
+- Input: `evidence.md` (E-01 to E-70 and its Gaps section). Rows cite evidence IDs. See **Risk cross-reference** below for the mapping from systemic gaps to R-IDs in `risk-register.csv` (added after auditor review X-08).
 - All facts come from a simulated model of a tenant (evidence.md scope check, `json:3`). No policy, procedure or process documents were in the evidence. So a gap type says what the *evidence* shows. It does not confirm that Contoso has no written control.
 - Labels (steering rule 2): the evidence IDs are the *Observations*. The "Gap statement" column is *Risk* (judgement). "Suggested control improvements" are *Recommendations*.
 - Control IDs: I cite an ID only where I am confident of it. Where I am not, the control area is named and marked `(verify ID)`. For ISO/IEC 42001 I cite clause groups (A.3, A.4, A.6, A.10) as certain and mark every sub-control number `(verify ID)`. For access control and secrets, NIST AI RMF and ISO/IEC 42001 have no specific control. ISO/IEC 27001 carries those rows, as 42001 expects.
@@ -21,7 +21,7 @@ Notes on this mapping
 ## Finding-to-control map
 | Evidence / Risk | Framework | Control (ID — name) | Gap type | Gap statement |
 |---|---|---|---|---|
-| **S1** E-36, E-41, E-40 (orphaned agent-marketing, still Published) | NIST CSF 2.0 | ID.AM-08 — Systems, hardware, software, services and data are managed throughout their life cycles | Operating | The tool flags "Orphaned" and "Inactive > 90 days" (E-41), yet the agent stays Published (E-35). Detection worked; nobody acted. |
+| **S1** E-36, E-41, E-40 (orphaned agent-marketing, still Published) | NIST CSF 2.0 | ID.AM-08 — Systems, hardware, software, services and data are managed throughout their life cycles | Design | The agent stays Published with a disabled sole owner (E-35, E-36). No Contoso process that detects or acts on orphaned agents is evidenced. The "Orphaned" flag (E-41) came from the assessor's lab tool, not a Contoso control (auditor X-06). |
 | | ISO 27001:2022 | 5.9 — Inventory of information and other associated assets (includes owner) | Operating | The asset's only owner is a disabled account (E-36). The ownership requirement of the inventory is not met. |
 | | ISO 27001:2022 | 6.5 — Responsibilities after termination or change of employment | Design | No evidenced leaver step moves or retires agents owned by a departing employee. |
 | | NIST AI RMF 1.0 | GOVERN 1.7 — Processes for decommissioning and phasing out AI systems safely | Design | No evidenced decommissioning trigger for an orphaned, idle agent. |
@@ -61,15 +61,26 @@ Notes on this mapping
 | **S5** E-21, E-29, E-31, E-37 (Teams-reachable agents; assumed-breach workstation path) | ISO 27001:2022 | 8.3 — Information access restriction | Design | Every authenticated employee can chat with the password-reset agent. No narrower audience is evidenced. E-21 is a hypothetical compromise node (Gaps: "Entry-point realism"). |
 | **S5** E-35, Gaps: "Environment governance" (agent in Contoso-Default; no DLP or Foundry RBAC data) | NIST CSF 2.0 | PR.PS-01 — Configuration management practices are established and applied | Evidence | Power Platform environment DLP and Foundry project RBAC are not evidenced. A published agent sits in the default environment. |
 | | ISO 27001:2022 | 8.12 — Data leakage prevention | Evidence | Same as above. |
-| **S5** E-24 (DevOps agent grounded on GitHub platform-runbooks) | ISO 27001:2022 | 5.23 — Information security for use of cloud services | Evidence | Who can write to the runbook repository is not evidenced. Write access would make the repository an indirect input channel to a production-privileged agent. |
+| **S5** E-24 (DevOps agent grounded on GitHub platform-runbooks) | ISO 27001:2022 | 5.23 — Information security for use of cloud services | Evidence | Who can write to the runbook repository is not evidenced. Write access would make the repository an indirect input channel to a production-privileged agent. **No risk raised: evidence request only** (who can write to platform-runbooks). |
 | **S6** Gaps: "Logging / monitoring" (no audit, diagnostic, alerting or transcript data for any agent) | NIST CSF 2.0 | PR.PS-04 — Log records are generated and made available for continuous monitoring | Evidence | Logging coverage of agent actions is not evidenced for any of the 5 agents or their 5 identities (4 agent identities, 1 managed identity). |
 | | NIST CSF 2.0 | DE.CM-09 — Computing hardware and software, runtime environments and their data are monitored | Evidence | Same as above. |
 | | ISO 27001:2022 | 8.15 — Logging; 8.16 — Monitoring activities | Evidence | Same as above. |
 | | NIST AI RMF 1.0 | MANAGE 4.1 — Post-deployment AI system monitoring plans are implemented | Evidence | No monitoring plan is evidenced for published agents. |
 | | ISO 42001:2023 | A.6 AI system life cycle — event logs (A.6.2.8, verify ID) | Evidence | Same as above. |
-| **S6** E-26, E-66, E-68, E-70 (analyzer blind spots: Secrets User not flagged; credential choke point hidden by `[:5]`; fixed date "2026-06-01"; KQL companion uses the same single source) | NIST CSF 2.0 | ID.RA-01 — Vulnerabilities in assets are identified, validated and recorded | Operating | The exposure check exists but under-reports. Governance reading only CLI output would miss the S4 credential choke point and the staleness of 4 agents. |
-| | ISO 27001:2022 | 8.8 — Management of technical vulnerabilities | Operating | Same as above. The tool's detection logic has not been validated. |
+| **S6** E-26, E-66, E-68, E-70 (analyzer blind spots: Secrets User not flagged; credential choke point hidden by `[:5]`; fixed date "2026-06-01"; KQL companion uses the same single source) | NIST CSF 2.0 | ID.RA-01 — Vulnerabilities in assets are identified, validated and recorded | Evidence | Whether Contoso relies on any exposure tool, and validates it, is not evidenced. The blind spots in the lab analyzer (Secrets User not flagged, credential choke point hidden by top-5 truncation, fixed inactivity date as a latent defect that changes no current result) are recorded as **assessment limitations** in summary.md, not as Contoso control failures (auditor X-05, X-06). |
+| **S5** E-13, E-15 (autonomous invoice agent with Post to ERP API, untrusted email input) → R-12 | ISO 27001:2022 | 8.26 — Application security requirements | Evidence | Whether ERP postings need human approval, and what the ERP API permits, is not evidenced. Added after auditor review X-07. |
+| | NIST AI RMF 1.0 | MEASURE 2.7 — AI system security and resilience are evaluated and documented (verify ID) | Evidence | No evaluation of prompt-injection resilience for an agent that can post financial transactions is evidenced. |
 | E-16 (Finance SharePoint "Confidential", not flagged `critical`) | ISO 27001:2022 | 5.12 — Classification of information | Evidence | It is not evidenced whether the criticality label is an accepted decision. If the label is wrong, the attack-path count understates agent-invoice exposure. |
+
+## Risk cross-reference
+| Systemic gap | Risks in `risk-register.csv` |
+|---|---|
+| S1 Inventory and ownership | R-06a, R-06b |
+| S2 Non-human identity lifecycle | R-02, R-06b, R-08, R-10 |
+| S3 Privileged access | R-01, R-03, R-05, R-10 |
+| S4 Secrets management | R-04 |
+| S5 Untrusted input and publish gate | R-01, R-02, R-03, R-09, R-12 |
+| S6 Monitoring | R-07 (tooling blind spots moved to assessment limitations in summary.md) |
 
 ## Suggested control improvements
 Owners are not evidenced. Each line carries a suggested owner per steering rule 5.
