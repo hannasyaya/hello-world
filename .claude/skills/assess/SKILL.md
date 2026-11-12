@@ -47,7 +47,7 @@ matches, every row has the same column count, and scores equal L × I.
 Write `$OUT/summary.md` for the operator's audience:
 
 1. **Headline** — two or three sentences: overall posture and the single most important action.
-2. **Risk heat map** — a 5×5 likelihood × impact grid in markdown with risk IDs in the cells.
+2. **Risk heat map** — a likelihood × impact grid in markdown, sized to the scale in `operator.md`, with risk IDs in the cells.
 3. **Top risks** — a table: ID, title, rating, owner, due date.
 4. **Systemic control gaps** — taken from the control gap file.
 5. **Auditor opinion** — the opinion, how each exception was resolved, and any open disagreements.

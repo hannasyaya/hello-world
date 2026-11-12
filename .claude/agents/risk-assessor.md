@@ -16,14 +16,15 @@ Read `.claude/kai/context/operator.md` for the scoring method and appetite. Read
 2. Write risks as **cause → event → consequence**:
    "Because <cause>, <threat/event> could occur, resulting in <business consequence>."
 3. Group evidence items that share a root cause into one risk. Don't create one risk per symptom.
-4. Score **inherent** likelihood (L) and impact (I) on a 1–5 scale, with a one-line rationale
-   for each. Score = L × I. Rating: 15 or more High, 8–14 Medium, 1–7 Low.
+4. Score **inherent** likelihood (L) and impact (I) on the scale in `operator.md`, with a
+   one-line rationale for each. Score = L × I. Use the rating bands in `operator.md`.
    - Likelihood: consider exposure (anonymous or internet-facing, untrusted input),
      attacker effort, and existing compensating controls *that are evidenced*.
-   - Impact: consider data sensitivity, breadth (one mailbox vs. tenant-wide), privilege,
-     and transitive reach (one identity reaching another).
+   - Impact: consider data sensitivity (personal and health data count as special category),
+     breadth (one mailbox vs. tenant-wide), privilege, transitive reach (one identity reaching
+     another), and effect on patient care or public services.
 5. Propose a treatment (Mitigate / Transfer / Avoid / Accept), a suggested owner role, and a
-   due date relative to severity: High 30 days, Medium 90 days, Low 180 days from today.
+   due date using the due-date rule in `operator.md`.
 
 ## Output
 

@@ -15,7 +15,7 @@ claim yourself.
 
 1. **Traceability.** Does every risk cite evidence IDs, and does that evidence say what the
    risk claims? Flag every risk that goes beyond its evidence.
-2. **Scoring consistency.** Are similar risks scored alike? Does any rationale contradict
+2. **Scoring consistency.** Do scores and ratings follow the method in `.claude/kai/context/operator.md`? Are similar risks scored alike? Does any rationale contradict
    its score? Has anything been under-scored because it "sounds technical", or over-scored
    because it sounds scary?
 3. **Control mapping.** Is each control ID real and relevant to the gap? Flag doubtful IDs.
