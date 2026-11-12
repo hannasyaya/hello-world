@@ -1,0 +1,6 @@
+# Targets Kai may scan or probe. One per line; lines starting with # are ignored.
+# Anything a scanning tool (nmap, nuclei, sqlmap, ...) points at must contain one of these.
+# Add a target only when you have written authorization to assess it.
+localhost
+127.0.0.1
+contoso-simulation

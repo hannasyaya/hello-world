@@ -1,0 +1,4 @@
+# Kai: local audit log and personal overrides
+.claude/kai/logs/
+.claude/settings.local.json
+__pycache__/
