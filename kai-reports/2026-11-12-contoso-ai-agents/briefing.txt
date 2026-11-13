@@ -1,0 +1,17 @@
+[kai]
+This is Kai, with your briefing on the Contoso AI agent risk assessment.
+
+The headline: Contoso's AI agents went live before the governance did. Several agents can reach confidential data through doors that are open to the internet, to outside email, or to any employee. Nothing we found would catch it.
+
+Three risks matter most. First, the HR benefits assistant is on the public website with no sign-in, and it reads confidential HR records. Anyone on the internet is two steps from employee personal data. Second, the helpdesk agent can reset other people's passwords for any employee who asks. Third, the finance agents can read every mailbox and every document site in the organization, and outside email can steer them.
+
+[risk-assessor]
+In total there are twelve risks: five high and seven medium. Five of the mediums are provisional until we receive the evidence we asked for.
+
+[auditor-critic]
+My opinion is satisfactory with exceptions. I raised eight exceptions, and all eight have been fixed. Sixteen smaller observations are still open.
+
+[kai]
+Three decisions are needed. Approve taking the HR assistant offline, or requiring sign-in, by Monday the sixteenth of November. Approve removing the one vault permission that closes almost half of the attack paths, by Thursday the nineteenth. And name an owner for each of the five high risks.
+
+The full report is in the app.

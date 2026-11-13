@@ -2,3 +2,6 @@
 .claude/kai/logs/
 .claude/settings.local.json
 __pycache__/
+
+# Kai: spoken briefings are rebuilt from briefing.txt
+kai-reports/**/*.mp3

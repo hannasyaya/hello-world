@@ -1,0 +1,9 @@
+{
+  "_comment": "One Piper voice per speaker. Names come from https://huggingface.co/rhasspy/piper-voices (voices.json). length_scale above 1.0 speaks slower.",
+  "kai":                { "voice": "en_US-lessac-medium",      "length_scale": 1.0,  "label": "Kai" },
+  "evidence-collector": { "voice": "en_US-ryan-medium",        "length_scale": 1.0,  "label": "Evidence collector" },
+  "risk-assessor":      { "voice": "en_GB-jenny_dioco-medium", "length_scale": 1.0,  "label": "Risk assessor" },
+  "control-mapper":     { "voice": "en_US-joe-medium",         "length_scale": 1.0,  "label": "Control mapper" },
+  "auditor-critic":     { "voice": "en_GB-alan-medium",        "length_scale": 1.05, "label": "Auditor-critic" },
+  "policy-writer":      { "voice": "en_US-kristin-medium",     "length_scale": 1.0,  "label": "Policy writer" }
+}

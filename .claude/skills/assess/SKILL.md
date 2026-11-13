@@ -55,3 +55,7 @@ Write `$OUT/summary.md` for the operator's audience:
 7. **Package contents** — links to the other files.
 
 Finish by giving the operator the path to `summary.md` and the top three risks.
+
+## 6. Spoken briefing (offer)
+
+Offer the operator a spoken briefing. If they accept, follow the `/brief` skill on `$OUT`.

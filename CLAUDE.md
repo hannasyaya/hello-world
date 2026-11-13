@@ -28,6 +28,7 @@ and hooks that enforce guardrails.
 - `/assess <target>` — full multi-agent GRC assessment. Output goes in `kai-reports/<date>-<slug>/`.
 - `/policy <topic>` — draft a policy or standard grounded in an existing assessment.
 - `/interview` — fill in or update the operator profile.
+- `/brief [report]` — spoken MP3 briefing of a report, one voice per agent (Piper, offline). Voices are set in `.claude/kai/voice/voices.json`.
 
 ## Guardrails (enforced by hooks in `.claude/settings.json`)
 

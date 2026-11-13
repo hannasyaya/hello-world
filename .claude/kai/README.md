@@ -8,7 +8,8 @@ when you open this repo.
 |---|---|---|
 | Identity and context | `CLAUDE.md`, `.claude/kai/context/` | Who Kai works for, the risk method, and the steering rules |
 | Specialist agents | `.claude/agents/*.md` | Evidence collector, risk assessor, control mapper, auditor-critic, policy writer |
-| Skills | `.claude/skills/*/SKILL.md` | `/assess`, `/policy`, `/interview` |
+| Skills | `.claude/skills/*/SKILL.md` | `/assess`, `/policy`, `/interview`, `/brief` |
+| Voice | `.claude/kai/voice/` | `/brief` turns a report into a spoken MP3 with one voice per agent. It uses Piper, which runs offline, so report text never goes to an outside service. |
 | Hooks | `.claude/settings.json`, `.claude/kai/hooks/` | Scope guard, audit log, session briefing |
 | Rules of engagement | `.claude/kai/scope.txt` | Targets that may be scanned or probed |
 | Outputs | `kai-reports/<date>-<slug>/` | Evidence, risk register (CSV), control gaps, auditor review, summary |
