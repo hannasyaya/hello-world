@@ -117,7 +117,7 @@ def main():
         with open(raw_all, "wb") as f:
             f.write(pcm)
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "s16le", "-ar", str(RATE), "-ac", "1",
-                        "-i", raw_all, "-codec:a", "libmp3lame", "-q:a", "4",
+                        "-i", raw_all, "-filter:a", "volume=-1.5dB", "-codec:a", "libmp3lame", "-q:a", "4",
                         "-metadata", f"title={args.title}", "-metadata", "artist=Kai (mini)", out], check=True)
 
     seconds = len(pcm) / 2 / RATE
